@@ -1,25 +1,77 @@
-// TODO: Add checkForBlockSingletons(int block)
+// TODO: THERE ARE SO MANY BUGS
 
 import java.util.List;
 import java.util.ArrayList;
-public class SudokuSolver {
+import java.util.Scanner;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+
+class SudokuSolver {
   private boolean impossible;
   private SudokuTile[][] sudoku;
-  private int solvedTiles; 
+  private int solvedTiles;
+  private List<SudokuTile> tilesToCheck;
+  
+  public static void main(String[] args) {
+    final String INPUT_FILE = "InputNums.txt";
+    Scanner scan = null;
+    try {
+        scan = new Scanner(new BufferedReader(new FileReader(INPUT_FILE)));
+    } catch (IOException e) {
+        System.out.println(e);
+    }
+    int[][] vals = new int[9][9];
+    for (int i = 0; i < 9; i++) {
+      for (int j = 0; j < 9; j++) {
+        vals[i][j] = scan.nextInt();
+      }
+    }
+    if (scan != null) {
+        scan.close();
+    }
+    SudokuSolver solver = new SudokuSolver(vals);
+    solver.solve();
+  }
 
   public SudokuSolver(int[][] vals) {
     impossible = false;
     solvedTiles = 0;
     sudoku = new SudokuTile[9][9];
+    tilesToCheck = new ArrayList<SudokuTile>();
     for (int i = 0; i < 9; i++) {
       for (int j = 0; j < 9; j++) {
         if (vals[i][j] == 0) {
           sudoku[i][j] = new SudokuTile(i+1, j+1);
         } else {
           sudoku[i][j] = new SudokuTile(i+1, j+1, vals[i][j]);
+          tilesToCheck.add(sudoku[i][j]);
         }
       }
     }
+  }
+  
+  public void solve() {
+    for (SudokuTile s : tilesToCheck) {
+        s.removeNumber(s.getValue());
+    }
+    while (solvedTiles < 81 && !impossible) {
+      for (int i = 0; i < 9; i++) {
+          checkForRowSingletons(i);
+          checkForColumnSingletons(i);
+          checkForBlockSingletons(i+1);
+      }
+    }
+    for (int i = 0; i < 9; i++) {
+      for (int j = 0; j < 9; j++) {
+        System.out.print(sudoku[i][j].getValue() + " ");
+      }
+      System.out.println();
+    }
+    if (impossible) {
+        System.out.println("Impossible to solve!");
+    }
+    System.out.println("SOLVED TILES: " + solvedTiles);
   }
   // Checks if any tile in a column has a unique possible value.
   public void checkForColumnSingletons(int col) {
@@ -34,8 +86,8 @@ public class SudokuSolver {
         }
       }
       if (count == 1) {
-        sudoku[col][j].setValue(i);
-        sudoku[col][j].removeNumber(i);
+        sudoku[col][found].setValue(i);
+        sudoku[col][found].removeNumber(i);
       }
     }
   }
@@ -52,8 +104,29 @@ public class SudokuSolver {
         }
       }
       if (count == 1) {
-        sudoku[j][row].setValue(i);
-        sudoku[j][row].removeNumber(i);
+        sudoku[found][row].setValue(i);
+        sudoku[found][row].removeNumber(i);
+      }
+    }
+  }
+  public void checkForBlockSingletons(int block) {
+    for (int i = 1; i <= 9; i++) {
+      int count = 0;
+      int foundCol = -1;
+      int foundRow = -1;
+      for (int j = (block / 3) * 3; i < (block / 3) * 3 + 3; i++) {
+        for (int k = ((block - 1) % 3) * 3; j < ((block - 1) % 3) * 3 + 3; j++) {
+          SudokuTile s = sudoku[i][j];
+          if (s.getPossibleValues() != null && s.getPossibleValues().contains(i)) {
+            count++;
+            foundCol = j;
+            foundRow = k;
+          }
+        }
+        if (count == 1) {
+          sudoku[foundCol][foundRow].setValue(i);
+          sudoku[foundCol][foundRow].removeNumber(i);
+        }
       }
     }
   }
@@ -68,7 +141,7 @@ public class SudokuSolver {
       this.row = row;
       this.col = col;
       value = 0;
-      for (int i = 0; i < 9; i++) {
+      for (int i = 1; i <= 9; i++) {
         possibleValues.add(i);
       }
     }
@@ -109,6 +182,9 @@ public class SudokuSolver {
     }
 
     public void removeNumber(int num) {
+      if (num == 0) {
+        return;
+      }
       for (int i = 0; i < 9; i++) {
         SudokuTile s = sudoku[col - 1][i];
         s.removePossibleValue(num);
